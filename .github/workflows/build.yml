@@ -1,0 +1,35 @@
+name: Build Relay Server
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04 # Matches Oracle Linux glibc version roughly
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Lua and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks libenet-dev zip
+
+      - name: Install Dependencies locally
+        run: |
+          luarocks install --tree local_modules enet
+          luarocks install --tree local_modules luasocket
+
+      - name: Bundle it up
+        run: |
+          mkdir release
+          cp relay_server.lua release/
+          # Copy the compiled C libraries (.so files) so Oracle doesn't have to compile them
+          cp -r local_modules/lib/lua/5.4/* release/
+          cp -r local_modules/share/lua/5.4/* release/
+          
+          # Create a tarball
+          tar -czvf naev-relay.tar.gz -C release .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: naev-relay-binary
+          path: naev-relay.tar.gz
